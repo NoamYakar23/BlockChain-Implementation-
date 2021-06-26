@@ -1,16 +1,21 @@
 import hashlib
 from ppretty import ppretty
+import time
+from datetime import datetime
+
+#for transaction puproses
+now = datetime.now().strftime("%H:%M:%S")
+print(now)
 
 class Block:
-    def __init__(self, index, t_stamp, data, prev_hash = ''):
-        self.index = index
+    def __init__(self, transactions, t_stamp, prev_hash = ''):
         self.t_stamp = t_stamp
-        self.data = data
+        self.transactions = transactions
         self.prev_hash = prev_hash
         self.hash = self.hashify
         self.nonce = 0
     def hashify(self):
-        input_str = str(self.index) + str(self.prev_hash) + str(self.data) + str(self.nonce)
+        input_str = str(self.prev_hash) + str(self.nonce)
         return hashlib.sha256(input_str.encode('utf-8')).hexdigest()
 
     def mine_block(self,difficulty):
@@ -23,22 +28,48 @@ class Block:
             self.nonce+=1
             hash_string = self.hashify()
 
+
         print('Mined Block: ' + str(hash_string))
+class Transactions:
+    def __init__(self, from_address, to_address, amount):
+        self.from_address = from_address
+        self.to_address = to_address
+        self.amount = amount
 class BlockChain:
     def __init__(self):
         self.chain = [self.genesis_initiation()]
-        self.difficulty = 5
+        self.difficulty = 2
         self.nonce = 0
+        self.pending_transactions = []
+        self.mining_reward = 5
     def genesis_initiation(self):
-        return Block(0, "08/04/2003", "First Block", "1")
+        return Block("08/04/2003", "First Block", "0")
 
     def get_latest_block(self):
         return self.chain[len(self.chain)-1]
 
-    def add_block(self, new_block):
-        new_block.prev_hash = self.get_latest_block().hash
-        new_block.mine_block(self.difficulty)
-        self.chain.append(new_block)
+    def mine_pending_transactions(self, mining_reward_address):
+        block = Block(now, self.pending_transactions)
+        block.mine_block(self.difficulty)
+
+        print('Block succesfully mined!')
+
+        self.chain.append(block)
+
+        self.pending_transactions = [Transactions(None, mining_reward_address, self.mining_reward)]
+    def create_transaction(self,transaction):
+        self.pending_transactions.append(transaction)
+
+    def get_address_balance(self,address):
+        balance = 0
+        for block in self.chain:
+            for transactions in block.transactions:
+                if(transactions.from_address == address):
+                    balance -= transactions.amount
+                if (transactions.from_address == address):
+                    balance += transactions.amount
+
+        return balance
 
     def verify_chain_integrity(self):
         #dont start with block 0, block 0 is the genesis block
@@ -64,10 +95,20 @@ class BlockChain:
         print(type(current_block.prev_hash))
         return bool
 
-noamcoin = BlockChain()
-noamcoin.add_block(Block(1, "07/12/1998", "5 added coins"))
-noamcoin.add_block(Block(2, "01/03/1989", "20 added coins"))
 
-print("Valid Block Chain? " + str(noamcoin.verify_chain_integrity()))
+
+
+
+
+
+
+noamcoin = BlockChain()
+noamcoin.create_transaction(Transactions('address_one', 'address_two', 10))
+noamcoin.create_transaction(Transactions('address_two', 'address_one', 5))
+
+
+print('\n Miner starting')
+noamcoin.mine_pending_transactions('bens-address')
+print('\n Balance of bens address is', noamcoin.get_address_balance('bens-address'))
 
 print(ppretty(noamcoin))
